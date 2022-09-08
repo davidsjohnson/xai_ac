@@ -108,3 +108,7 @@ cmake-build-*/
 
 # idea folder, uncomment if you don't need it
 .idea/
+
+# custom added
+/unittests/testdata/
+/unittests/testoutput/

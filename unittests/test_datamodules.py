@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 
 from torch.utils.data import DataLoader
-import pytorch_lightning as pl
 
 from src.data.affectnet_datamodule import AffectNetAUDataModule
 
@@ -18,15 +17,15 @@ class TestAffectNetAUDataModule:
         self.val_split = 0.2
         self.batch_size = 32
 
-        dm: pl.LightningDataModule = AffectNetAUDataModule(self.label_type, self.val_split, self.batch_size)
+        dm = AffectNetAUDataModule(self.label_type, val_split=self.val_split, batch_size=self.batch_size)
         dm.prepare_data()
         dm.setup()
 
-        self.feature_cols = dm._ds_train.dataset.feature_columns    # get feature columns for testing
+        self.feature_cols = dm.train_dataset.dataset.feature_names    # get feature columns for testing
 
         #### Check Validation size
-        len_train = len(dm._ds_train.indices)
-        len_val = len(dm._ds_val.indices)
+        len_train = len(dm.train_dataset.indices)
+        len_val = len(dm.val_dataset.indices)
         assert len_val / (len_train + len_val) == self.val_split
 
         #### Train Loader Testing

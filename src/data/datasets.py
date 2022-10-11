@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -7,13 +8,17 @@ import torch.utils.data
 
 class AffectNetAUDataset(torch.utils.data.Dataset):
 
+    LABEL_TYPES = ['arousal', 'valence', 'expression']
+    EXPRESSION_LABELS = ['Neutral', 'Happiness', 'Sadness', 'Surprise', 'Fear', 'Disgust', 'Anger', 'Contempt']
+
     def __init__(self,
                  datapath: Path,
                  annotationspath: Path,
-                 label_column: str,
+                 label_column: Union[str, list],
                  name: str,
                  save: bool=False,
-                 load_cache: bool=True):
+                 load_cache: bool=True,
+                 return_numpy: bool=True):
         '''
 
         :param datapath:
@@ -22,6 +27,7 @@ class AffectNetAUDataset(torch.utils.data.Dataset):
         :param name:
         :param save:
         :param load_cache:
+        :param return_numpy:
         '''
 
         self._datapath = datapath
@@ -34,23 +40,38 @@ class AffectNetAUDataset(torch.utils.data.Dataset):
         else:
             self._df: pd.DataFrame = self._load_aus_annotations(datapath, self._csv_path if save else None)
 
+        # handle a single label column or a list of label columns
+        if isinstance(label_column, str):
+            label_column = [label_column]       # convert single label type to a list so get_item returns series
+        for l in label_column:
+            if l not in self.LABEL_TYPES:
+                raise ValueError(f'Invalid Label Type {l}.  Should be one of {self.LABEL_TYPES}')
         self._label_col = label_column
 
         self._feature_cols = [col for col in self._df.columns if 'AU' in col]
 
+        self._return_numpy = return_numpy
+
     @property
-    def feature_columns(self):
+    def feature_names(self):
         return self._feature_cols
+
+    @property
+    def expression_labels(self):
+        return self.EXPRESSION_LABELS
 
     def __len__(self):
         return len(self._df)
 
     def __getitem__(self, idx):
-        x = self._df[self._feature_cols].iloc[idx].values
+        x = self._df[self._feature_cols].iloc[idx]
         y = self._df[self._label_col].iloc[idx]
         img_id = self._df['img_id'].iloc[idx]
 
-        return x, y, img_id
+        if self._return_numpy:
+            return x.values, y.values, img_id
+        else:
+            return x, y, img_id
 
 
     def _load_aus_annotations(self, path: Path, savepath: Path=None):

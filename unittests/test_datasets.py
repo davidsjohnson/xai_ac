@@ -3,7 +3,96 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.data.datasets import AffectNetAUDataset
+from PIL import Image
+
+import torch
+torch.manual_seed(17)
+
+from torchvision import transforms
+
+from src.data.datasets import AffectNetAUDataset, AffectNetImageDataset
+
+
+class TestAffectNetImageDataset:
+
+    def test_basicloading(self):
+        trainpath = Path('unittests/testdata/affectnet/raw/train_set')
+        label_col = 'expression'
+        ds = AffectNetImageDataset(trainpath, label_col)
+
+        assert ds.df is not None
+
+        exp_len = 40
+        assert exp_len == len(ds)
+
+        x, y, img_id = ds[10]
+        assert x.size == (224, 224)
+        assert x.mode == 'RGB'
+        assert y.shape == (1, )
+        assert isinstance(img_id, str)
+
+
+    def test_correct(self):
+
+        trainpath = Path('unittests/testdata/affectnet/raw/train_set')
+        imagepath = trainpath / 'images'
+        annotationspath = trainpath / 'annotations'
+
+        label_columns = ['arousal', 'valence', 'expression']
+        label_names = ['aro', 'val', 'exp']
+
+        ds = AffectNetImageDataset(trainpath, label_columns)
+
+        x_act, y_act, img_id = ds[30]
+
+        # load image and check images are equal
+        with open(imagepath / f'{img_id}.jpg', "rb") as f:
+            x_exp = Image.open(f)
+            x_exp.convert("RGB")
+        assert list(x_act.getdata()) == list(x_exp.getdata())
+
+        # load annotations and check equal
+        y_exp = {c: float(np.load(annotationspath / f'{img_id}_{l}.npy').item())
+                 for l, c in zip(label_names, label_columns)}
+        y_exp = pd.Series(data=y_exp)
+        pd.testing.assert_series_equal(y_act, y_exp, check_names=False)
+
+
+    def test_transform(self):
+        trainpath = Path('unittests/testdata/affectnet/raw/train_set')
+        imagepath = trainpath / 'images'
+        annotationspath = trainpath / 'annotations'
+
+        label_columns = ['arousal', 'valence', 'expression']
+        label_names = ['aro', 'val', 'exp']
+
+        img_transforms = transforms.Compose(
+            [transforms.RandomHorizontalFlip(),
+             transforms.RandAugment()]
+        )
+
+        target_transform = transforms.Compose([lambda x: x/.05])
+
+        ds = AffectNetImageDataset(trainpath, label_columns,
+                                   transform=img_transforms, target_transform=target_transform)
+
+        x_act, y_act, img_id = ds[28]
+
+        # load image and check images are equal
+        with open(imagepath / f'{img_id}.jpg', "rb") as f:
+            x_exp = Image.open(f)
+            x_exp.convert("RGB")
+        assert list(x_act.getdata()) != list(x_exp.getdata())
+
+        # save for manual review
+        x_act.save('unittests/testoutput/x_transformed.jpg')
+        x_exp.save('unittests/testoutput/x_original.jpg')
+
+        # load annotations and check equal
+        y_exp = {c: float(np.load(annotationspath / f'{img_id}_{l}.npy').item())  / 0.05
+                 for l, c in zip(label_names, label_columns)}
+        y_exp = pd.Series(data=y_exp)
+        pd.testing.assert_series_equal(y_act, y_exp, check_names=False)
 
 
 class TestAffectNetAUDataset:

@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Union, Optional, Callable, Any, Tuple
 
+from tqdm.auto import tqdm
+
 import numpy as np
 import pandas as pd
 
@@ -16,10 +18,15 @@ class AffectNetImageDataset(torchvision.datasets.VisionDataset):
     def __init__(self,
                  root: Union[str, Path],
                  label_column: Union[str, list],
+                 name: str,
                  loader: Callable = default_loader,
                  transform: Optional[Callable] = None,
                  target_transform: Optional[Callable] = None,
-                 transforms: Optional[Callable] = None,):
+                 transforms: Optional[Callable] = None,
+                 save: bool = False,
+                 load_cache: bool = True,
+                 keep_as_pandas = False
+                 ):
         """
         uses pytorch DatasetFolder as a guide but we must be able to support regression labels in addition to classes
         https://pytorch.org/vision/stable/_modules/torchvision/datasets/folder.html#DatasetFolder
@@ -35,6 +42,14 @@ class AffectNetImageDataset(torchvision.datasets.VisionDataset):
                                                     target_transform=target_transform)
         self._imgs_root = Path(self.root) / 'images'
         self._annotations_root = Path(self.root) / 'annotations'
+        self._name = name
+        self._keep_as_pandas = keep_as_pandas
+
+        self._csv_path = self.root / f'{name}.csv'
+        if load_cache == True and self._csv_path.exists():
+            self._df: pd.DataFrame = pd.read_csv(self._csv_path)
+        else:
+            self._df: pd.DataFrame = self._make_dataset(savepath=self._csv_path if save else None)
 
         self._loader = loader
 
@@ -46,51 +61,64 @@ class AffectNetImageDataset(torchvision.datasets.VisionDataset):
                 raise ValueError(f'Invalid Label Type {l}.  Should be one of {self.LABEL_TYPES}')
         self._label_col = label_column
 
-        self._df: pd.DataFrame = self._make_dataset()
+    @property
+    def expression_labels(self):
+        return self.EXPRESSION_LABELS
 
     @property
     def df(self):
         return self._df
 
-    def _make_dataset(self):
+    def _make_dataset(self, savepath: Optional[Path]=None):
 
         img_files = self._imgs_root.rglob('*.jpg')
 
         dfs = []
-        for f in img_files:
+        with tqdm(img_files) as pbar:
+            for f in pbar:
 
-            img_id = f.stem
+                img_id = f.stem
 
-            df = pd.DataFrame(data=[f], columns=['filepath'])
-            df['img_id'] = img_id
+                df = pd.DataFrame(data=[f], columns=['filepath'])
+                df['img_id'] = img_id
 
-            # load annotations
-            f_aro = self._annotations_root / f'{img_id}_aro.npy'
-            f_val = self._annotations_root / f'{img_id}_val.npy'
-            f_exp = self._annotations_root / f'{img_id}_exp.npy'
-            f_lnd = self._annotations_root / f'{img_id}_lnd.npy'
+                # load annotations
+                f_aro = self._annotations_root / f'{img_id}_aro.npy'
+                f_val = self._annotations_root / f'{img_id}_val.npy'
+                f_exp = self._annotations_root / f'{img_id}_exp.npy'
+                f_lnd = self._annotations_root / f'{img_id}_lnd.npy'
 
-            df['arousal'] = float(np.load(f_aro).item())
-            df['valence'] = float(np.load(f_val).item())
-            df['expression'] = float(np.load(f_exp).item())
+                df['arousal'] = float(np.load(f_aro).item())
+                df['valence'] = float(np.load(f_val).item())
+                df['expression'] = float(np.load(f_exp).item())
 
-            # load landmarks
-            lnds = np.load(f_lnd)
-            lnd_cols = [f'lnd_{i // 2 + 1}_{"x" if i % 2 == 0 else "y"}' for i in range(0, len(lnds))]
-            df = pd.concat([df, pd.DataFrame([lnds], columns=lnd_cols, index=df.index)], axis=1)
+                # load landmarks
+                lnds = np.load(f_lnd)
+                lnd_cols = [f'lnd_{i // 2 + 1}_{"x" if i % 2 == 0 else "y"}' for i in range(0, len(lnds))]
+                df = pd.concat([df, pd.DataFrame([lnds], columns=lnd_cols, index=df.index)], axis=1)
 
-            dfs.append(df)
+                dfs.append(df)
 
-        # TODO Fix error.  Add check for files
-        return pd.concat(dfs)
+        if len(dfs) == 0:
+            raise ValueError(f'No JPG files found in folder: {self._imgs_root.resolve()}')
+        df_imgs = pd.concat(dfs)
+        if savepath is not None:
+            df_imgs.to_csv(savepath)
+
+        return df_imgs
 
     def __len__(self) -> int:
         return len(self._df)
 
-    def __getitem__(self, idx: int) -> Tuple[Any, Any]:
+    def __getitem__(self, idx: int) -> Tuple[Any, Any, Any]:
         imgpath = self._df['filepath'].iloc[idx]
         target = self._df[self._label_col].iloc[idx]
         sample = self._loader(imgpath)
+
+        # convert target to numpy instead of pandas series
+        if not self._keep_as_pandas:
+            target = target.values
+
         if self.transform is not None:
             sample = self.transform(sample)
         if self.target_transform is not None:
@@ -99,6 +127,8 @@ class AffectNetImageDataset(torchvision.datasets.VisionDataset):
         img_id = self._df['img_id'].iloc[idx]
 
         return sample, target, img_id
+
+
 
         
 
@@ -112,9 +142,9 @@ class AffectNetAUDataset(torch.utils.data.Dataset):
                  annotationspath: Path,
                  label_column: Union[str, list],
                  name: str,
-                 save: bool=False,
-                 load_cache: bool=True,
-                 return_numpy: bool=True):
+                 save: bool = False,
+                 load_cache: bool = True,
+                 return_numpy: bool = True):
         """
 
         :param datapath:
@@ -130,10 +160,10 @@ class AffectNetAUDataset(torch.utils.data.Dataset):
         self._datapath = datapath
         self._annotationspath = annotationspath
         self._name = name
-        self._csv_path = self._datapath / f'{name}.csv'
 
+        self._csv_path = self._datapath / f'{name}.csv'
         if load_cache == True and self._csv_path.exists():
-            self._df: pd.DataFrame = pd.read_csv(self._datapath / f'{name}.csv')
+            self._df: pd.DataFrame = pd.read_csv(self._csv_path)
         else:
             self._df: pd.DataFrame = self._load_aus_annotations(datapath, self._csv_path if save else None)
 
@@ -164,7 +194,7 @@ class AffectNetAUDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self._df)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Tuple[Any, Any, Any]:
         x = self._df[self._feature_cols].iloc[idx]
         y = self._df[self._label_col].iloc[idx]
         img_id = self._df['img_id'].iloc[idx]
@@ -175,7 +205,7 @@ class AffectNetAUDataset(torch.utils.data.Dataset):
             return x, y, img_id
 
 
-    def _load_aus_annotations(self, path: Path, savepath: Path=None):
+    def _load_aus_annotations(self, path: Path, savepath: Optional[Path]=None):
         '''
 
         :param path:

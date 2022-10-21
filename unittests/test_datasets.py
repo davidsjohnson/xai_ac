@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+import numpy.testing
 import pandas as pd
 
 from PIL import Image
@@ -10,7 +11,7 @@ torch.manual_seed(17)
 
 from torchvision import transforms
 
-from src.data.datasets import AffectNetAUDataset, AffectNetImageDataset
+from src.data.affectnet_datasets import AffectNetAUDataset, AffectNetImageDataset
 
 
 class TestAffectNetImageDataset:
@@ -18,7 +19,8 @@ class TestAffectNetImageDataset:
     def test_basicloading(self):
         trainpath = Path('unittests/testdata/affectnet/raw/train_set')
         label_col = 'expression'
-        ds = AffectNetImageDataset(trainpath, label_col)
+        ds = AffectNetImageDataset(trainpath, label_col, name='affectnet_train_debug',
+                                   load_cache=False, save=False)
 
         assert ds.df is not None
 
@@ -41,7 +43,8 @@ class TestAffectNetImageDataset:
         label_columns = ['arousal', 'valence', 'expression']
         label_names = ['aro', 'val', 'exp']
 
-        ds = AffectNetImageDataset(trainpath, label_columns)
+        ds = AffectNetImageDataset(trainpath, label_columns, name='affectnet_train_debug',
+                                   load_cache=False, save=False, keep_as_pandas=True)
 
         x_act, y_act, img_id = ds[30]
 
@@ -73,8 +76,9 @@ class TestAffectNetImageDataset:
 
         target_transform = transforms.Compose([lambda x: x/.05])
 
-        ds = AffectNetImageDataset(trainpath, label_columns,
-                                   transform=img_transforms, target_transform=target_transform)
+        ds = AffectNetImageDataset(trainpath, label_columns, name='affectnet_train_debug',
+                                   transform=img_transforms, target_transform=target_transform,
+                                    load_cache=False, save=False, keep_as_pandas=False)
 
         x_act, y_act, img_id = ds[28]
 
@@ -89,10 +93,9 @@ class TestAffectNetImageDataset:
         x_exp.save('unittests/testoutput/x_original.jpg')
 
         # load annotations and check equal
-        y_exp = {c: float(np.load(annotationspath / f'{img_id}_{l}.npy').item())  / 0.05
-                 for l, c in zip(label_names, label_columns)}
-        y_exp = pd.Series(data=y_exp)
-        pd.testing.assert_series_equal(y_act, y_exp, check_names=False)
+        y_exp = [float(np.load(annotationspath / f'{img_id}_{l}.npy').item())  / 0.05
+                 for l in label_names]
+        np.testing.assert_allclose(y_act, y_exp)
 
 
 class TestAffectNetAUDataset:
@@ -119,11 +122,11 @@ class TestAffectNetAUDataset:
         assert len(x) == 35     # 35 AUs from OpenFace
 
         df_aus = pd.read_csv(trainpath / f'{img_id}.csv')
-        x_exp = df_aus[ds.feature_names]
+        x_exp = df_aus[ds.feature_names].values
         y_exp = float(np.load(annotationspath / f'{img_id}_{label_name}.npy').item())
 
-        assert np.allclose(x, x_exp)
-        assert y == y_exp
+        np.testing.assert_allclose(x, np.squeeze(x_exp))
+        np.testing.assert_allclose(y, y_exp)
 
     def test_fromcache(self):
 
@@ -148,11 +151,11 @@ class TestAffectNetAUDataset:
 
         # get expected values from original feature and annotation files
         df_aus = pd.read_csv(trainpath / f'{img_id}.csv')
-        x_exp = df_aus[ds.feature_names]
+        x_exp = df_aus[ds.feature_names].values
         y_exp = float(np.load(annotationspath / f'{img_id}_{label_name}.npy').item())
 
-        assert np.allclose(x, x_exp)
-        assert y == y_exp
+        np.testing.assert_allclose(x, np.squeeze(x_exp))
+        np.testing.assert_allclose(y, y_exp)
 
     def test_alllabeltypes(self):
 
@@ -182,7 +185,7 @@ class TestAffectNetAUDataset:
                  for l, c in zip(label_names, label_columns)}
         y_exp = pd.Series(data=y_exp)
 
-        assert np.allclose(x, x_exp)
+        np.testing.assert_allclose(x, np.squeeze(x_exp))
         pd.testing.assert_series_equal(y, y_exp, check_names=False)
 
 
@@ -209,10 +212,10 @@ class TestAffectNetAUDataset:
 
         # get expected values from original feature and annotation files
         df_aus = pd.read_csv(trainpath / f'{img_id}.csv')
-        x_exp = df_aus[ds.feature_names]
+        x_exp = df_aus[ds.feature_names].values
         y_exp = {c: float(np.load(annotationspath / f'{img_id}_{l}.npy').item())
                  for l, c in zip(label_names, label_columns)}
         y_exp = pd.Series(data=y_exp)
 
-        assert np.allclose(x, x_exp)
+        np.testing.assert_allclose(x, np.squeeze(x_exp))
         pd.testing.assert_series_equal(y, y_exp, check_names=False)

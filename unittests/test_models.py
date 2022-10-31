@@ -91,6 +91,9 @@ class TestLightningClassification:
 
 
     def test_cnn(self):
+        """
+        Note: This Test should be run on a GPU otherwise it may take around 40 minutes to run
+        """
         from torchvision.datasets import CIFAR10
         from torch.utils.data import default_collate
         ds_train = CIFAR10('unittests/testdata', train=True, download=True, transform=transforms.ToTensor())
@@ -160,6 +163,6 @@ class TestLightningClassification:
         val_result = trainer.test(net, dataloaders=dl_val, verbose=True)
         test_result = trainer.test(net, dataloaders=dl_test, verbose=True)
 
-        assert train_result[0]['test_acc'] == pytest.approx(.99, abs=0.03)
-        assert val_result[0]['test_acc'] == pytest.approx(.92, abs=0.05)
-        assert test_result[0]['test_acc'] == pytest.approx(.92, abs=0.05)
+        assert train_result[0]['test_acc'] == pytest.approx(.70, abs=0.03)
+        assert val_result[0]['test_acc'] == pytest.approx(.65, abs=0.03)
+        assert test_result[0]['test_acc'] == pytest.approx(.65, abs=0.03)

@@ -112,3 +112,7 @@ cmake-build-*/
 # custom added
 /unittests/testdata/
 /unittests/testoutput/
+
+
+data/
+output/

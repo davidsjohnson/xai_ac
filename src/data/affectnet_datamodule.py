@@ -83,7 +83,7 @@ class AbstractAffectNetDataModule(pl.LightningDataModule):
         '''
         return torch.utils.data.DataLoader(self.val_dataset,
                                            batch_size=self._batch_size,
-                                           shuffle=True,
+                                           shuffle=False,
                                            num_workers=self._num_workers)
 
     def test_dataloader(self) -> torch.utils.data.DataLoader:

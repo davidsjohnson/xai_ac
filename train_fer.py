@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from tqdm import tqdm
+
 import torch
 import torch.utils.data
 import pytorch_lightning as pl
@@ -11,12 +13,17 @@ from torchsummaryX import summary
 from src.models.lightning_models import LightningClassification
 from src.data.affectnet_datamodule import AffectNetImageDataModule
 
+pl.seed_everything(42)
+
+MEAN = [0.5697, 0.4462, 0.3913]
+STD = [0.2323, 0.2060, 0.1947]
+
 def main(args):
 
     ## Init params
     label = 'expression'
     batch_size = 256
-    val_split = 0.51
+    val_split = 0.1
 
     final_activation = 'softmax'
     optim = torch.optim.Adam
@@ -28,7 +35,7 @@ def main(args):
     ## Setup Data
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        transforms.Normalize(mean=MEAN, std=STD),
     ])
     dm = AffectNetImageDataModule(label_type=label,
                                   data_root=args.dataroot,

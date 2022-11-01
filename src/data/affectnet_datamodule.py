@@ -40,9 +40,11 @@ class TrainValSplitTransformWrapper(torch.utils.data.Dataset):
 
 class AbstractAffectNetDataModule(pl.LightningDataModule):
 
-    def __init__(self):
+    def __init__(self, num_workers):
         super(AbstractAffectNetDataModule, self).__init__()
         # TODO combine inits to here...
+
+        self._num_workers = num_workers
 
     @property
     def feature_names(self):
@@ -71,7 +73,8 @@ class AbstractAffectNetDataModule(pl.LightningDataModule):
         '''
         return torch.utils.data.DataLoader(self.train_dataset,
                                            batch_size=self._batch_size,
-                                           shuffle=True)
+                                           shuffle=True,
+                                           num_workers=self._num_workers)
 
     def val_dataloader(self) -> torch.utils.data.DataLoader:
         '''
@@ -80,7 +83,8 @@ class AbstractAffectNetDataModule(pl.LightningDataModule):
         '''
         return torch.utils.data.DataLoader(self.val_dataset,
                                            batch_size=self._batch_size,
-                                           shuffle=True)
+                                           shuffle=True,
+                                           num_workers=self._num_workers)
 
     def test_dataloader(self) -> torch.utils.data.DataLoader:
         '''
@@ -88,8 +92,9 @@ class AbstractAffectNetDataModule(pl.LightningDataModule):
         :return:
         '''
         return torch.utils.data.DataLoader(self.test_dataset,
-                                           batch_size=1,
-                                           shuffle=False)
+                                           batch_size=self._batch_size,
+                                           shuffle=False,
+                                           num_workers=self._num_workers)
 
     def predict_dataloader(self) -> torch.utils.data.DataLoader:
         '''
@@ -97,8 +102,9 @@ class AbstractAffectNetDataModule(pl.LightningDataModule):
         :return:
         '''
         return torch.utils.data.DataLoader(self.test_dataset,
-                                           batch_size=1,
-                                           shuffle=False)
+                                           batch_size=self._batch_size,
+                                           shuffle=False,
+                                           num_workers=self._num_workers)
 
 
 class AffectNetImageDataModule(AbstractAffectNetDataModule):
@@ -114,7 +120,8 @@ class AffectNetImageDataModule(AbstractAffectNetDataModule):
                  test_transform: Callable = transforms.ToTensor(),
                  test_targret_transform: Optional[Callable] = None,
                  keep_as_pandas: bool = False,
-                 refresh_cache: bool = False):
+                 refresh_cache: bool = False,
+                 num_workers:int = 0):
         '''
 
         :param label_type:
@@ -124,7 +131,7 @@ class AffectNetImageDataModule(AbstractAffectNetDataModule):
         :param batch_size:
         :param refresh_cache:
         '''
-        super(AffectNetImageDataModule, self).__init__()
+        super(AffectNetImageDataModule, self).__init__(num_workers)
         self._train_root = data_root / 'train_set'
         self._val_root = data_root / 'val_set'
 
@@ -229,7 +236,8 @@ class AffectNetAUDataModule(AbstractAffectNetDataModule):
                  label_type: Union[str, list],
                  data_root: Path=Path('data'),
                  val_split: float=0.1,
-                 batch_size: int = 64):
+                 batch_size: int = 64,
+                 num_workers:int = 0):
         '''
 
         :param label_type:
@@ -237,7 +245,7 @@ class AffectNetAUDataModule(AbstractAffectNetDataModule):
         :param val_split:
         :param batch_size:
         '''
-        super(AffectNetAUDataModule, self).__init__()
+        super(AffectNetAUDataModule, self).__init__(num_workers)
 
         self._train_aus_path = data_root / self.TRAIN_AUS_PATH
         self._train_labels_path = data_root / self.TRAIN_LABELS_PATH

@@ -28,7 +28,16 @@ class LightningClassification(pl.LightningModule):
         return self.net.forward(x)
 
     def configure_optimizers(self):
-        return self._optim(self.parameters(), **self._optim_params)
+        opt =  self._optim(self.parameters(), **self._optim_params)
+        lr_scheduler = dict(
+            scheduler = torch.optim.lr_scheduler.StepLR(opt, gamma=0.1, step_size=10000),
+            interval = 'step',
+
+        )
+        return {
+            "optimizer": opt,
+            "lr_scheduler": lr_scheduler
+        }
 
     def _process_batch(self, batch, batch_idx):
         x, y, s = batch

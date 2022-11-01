@@ -23,7 +23,7 @@ class TestLightningClassification:
         n_classes = 3
         final_activation = 'softmax'
         opt = torch.optim.Adam
-        opt_params = {'lr': 1e-4}
+        opt_params = {'lr': 0.001}
         loss = torch.nn.CrossEntropyLoss()
         ckpt_path = 'unittests/testoutput/ckpts'
 
@@ -65,6 +65,7 @@ class TestLightningClassification:
             pl.callbacks.ModelCheckpoint(
                 save_weights_only=True, mode='min', monitor='val_loss'
             ),
+           pl.callbacks.LearningRateMonitor(logging_interval='step')
         ]
         trainer = pl.Trainer(default_root_dir=ckpt_path,
                              callbacks=callbacks,

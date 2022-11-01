@@ -15,13 +15,13 @@ def main(args):
 
     ## Init params
     label = 'expression'
-    batch_size = 128
-    val_split = 0.1
+    batch_size = 256
+    val_split = 0.51
 
     final_activation = 'softmax'
     optim = torch.optim.Adam
     optim_params = dict(
-        lr = 1e-4
+        lr = 0.01
     )
     loss = torch.nn.CrossEntropyLoss()
 
@@ -36,7 +36,8 @@ def main(args):
                                   batch_size=batch_size,
                                   train_transform=transform,
                                   test_transform=transform,
-                                  refresh_cache=args.refresh_cache)
+                                  refresh_cache=args.refresh_cache,
+                                  num_workers=8)
 
     ## Setup Model
     # load alexnet and modify output layer for new number of classes
@@ -55,6 +56,7 @@ def main(args):
         pl.callbacks.ModelCheckpoint(
             save_weights_only=True, mode='min', monitor='val_loss'
         ),
+        pl.callbacks.LearningRateMonitor(logging_interval='step')
     ]
     trainer = pl.Trainer(default_root_dir=args.output / 'ckpts',
                          callbacks=callbacks,

@@ -29,7 +29,7 @@ class TestAffectNetImageDataModule:
 
         dm = AffectNetImageDataModule(self.label_type, data_root=data_root, name='affectnet_img_debug',
                                       val_split=self.val_split, batch_size=self.batch_size,
-                                      refresh_cache=True)
+                                      refresh_cache=True, num_workers=0)
         dm.prepare_data()
         dm.setup()
 
@@ -66,7 +66,7 @@ class TestAffectNetImageDataModule:
 
         dm = AffectNetImageDataModule(self.label_type, data_root=data_root,
                                       val_split=self.val_split, batch_size=self.batch_size,
-                                      refresh_cache=False)
+                                      refresh_cache=False, num_workers=0)
         dm.prepare_data()
         dm.setup()
 
@@ -99,10 +99,7 @@ class TestAffectNetImageDataModule:
         data_iter = iter(dataloader)
         x_batch, y_batch, ids_batch = next(data_iter)
 
-        if partition in ['train', 'val']:
-            assert x_batch.shape ==  (self.batch_size, 3, 224, 224)    #images are 3, 224, 224 (pytorch is channels first)
-        else:
-            assert x_batch.shape == (1, 3, 224, 224)
+        assert x_batch.shape ==  (self.batch_size, 3, 224, 224)    #images are 3, 224, 224 (pytorch is channels first)
 
         # check random data
         batch_idx = random.randint(0, self.batch_size-1) if partition in ['train', 'val'] else 0
@@ -132,7 +129,7 @@ class TestAffectNetAUDataModule:
         self.val_split = 0.2
         self.batch_size = 32
 
-        dm = AffectNetAUDataModule(self.label_type, val_split=self.val_split, batch_size=self.batch_size)
+        dm = AffectNetAUDataModule(self.label_type, val_split=self.val_split, batch_size=self.batch_size, num_workers=0)
         dm.prepare_data()
         dm.setup()
 
@@ -160,10 +157,7 @@ class TestAffectNetAUDataModule:
         data_iter = iter(dataloader)
         x_batch, y_batch, ids_batch = next(data_iter)
 
-        if partition in ['train', 'val']:
-            assert x_batch.shape ==  (self.batch_size, 35)
-        else:
-            assert x_batch.shape == (1, 35)
+        assert x_batch.shape ==  (self.batch_size, 35)
 
         # check random data
         batch_idx = random.randint(0, self.batch_size-1) if partition in ['train', 'val'] else 0

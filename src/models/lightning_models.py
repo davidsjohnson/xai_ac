@@ -30,7 +30,7 @@ class LightningClassification(pl.LightningModule):
     def configure_optimizers(self):
         opt =  self._optim(self.parameters(), **self._optim_params)
         lr_scheduler = dict(
-            scheduler = torch.optim.lr_scheduler.StepLR(opt, gamma=0.1, step_size=10000),
+            scheduler = torch.optim.lr_scheduler.StepLR(opt, gamma=0.1, step_size=5000),
             interval = 'step',
 
         )

@@ -28,7 +28,7 @@ def main(args):
     final_activation = 'softmax'
     optim = torch.optim.Adam
     optim_params = dict(
-        lr = 0.01
+        lr = 0.005
     )
     loss = torch.nn.CrossEntropyLoss()
 

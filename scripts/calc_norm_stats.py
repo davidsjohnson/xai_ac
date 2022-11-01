@@ -29,7 +29,7 @@ def main(args):
                                   val_split=args.val_split,
                                   batch_size=args.batch_size,
                                   refresh_cache=args.refresh_cache,
-                                  num_workers=0)
+                                  num_workers=8)
     dm.prepare_data()
     dm.setup(stage='fit')
 

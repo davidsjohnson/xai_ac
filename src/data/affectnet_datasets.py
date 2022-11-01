@@ -69,6 +69,14 @@ class AffectNetImageDataset(torchvision.datasets.VisionDataset):
     def df(self):
         return self._df
 
+    @property
+    def dims(self):
+        return 3, 224, 224
+
+    @property
+    def num_classes(self):
+        return 8
+
     def _make_dataset(self, savepath: Optional[Path]=None):
 
         img_files = self._imgs_root.rglob('*.jpg')
@@ -186,6 +194,14 @@ class AffectNetAUDataset(torch.utils.data.Dataset):
     @property
     def expression_labels(self):
         return self.EXPRESSION_LABELS
+
+    @property
+    def dims(self):
+        return 35,
+
+    @property
+    def num_classes(self):
+        return 8
 
     @property
     def df(self):

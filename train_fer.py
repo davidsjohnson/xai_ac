@@ -1,0 +1,89 @@
+from pathlib import Path
+
+import torch
+import torch.utils.data
+import pytorch_lightning as pl
+from torchvision import models
+from torchvision import transforms
+
+from torchsummaryX import summary
+
+from src.models.lightning_models import LightningClassification
+from src.data.affectnet_datamodule import AffectNetImageDataModule
+
+def main(args):
+
+    output = Path(args.output)
+
+    ## Init params
+    label = 'expression'
+    batch_size = 128
+    val_split = 0.1
+
+    final_activation = 'softmax'
+    optim = torch.optim.Adam
+    optim_params = dict(
+        lr = 1e-4
+    )
+    loss = torch.nn.CrossEntropyLoss()
+
+    ## Setup Data
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+    dm = AffectNetImageDataModule(label_type=label,
+                                  data_root=args.dataroot,
+                                  val_split=val_split,
+                                  batch_size=batch_size,
+                                  train_transform=transform,
+                                  test_transform=transform,
+                                  refresh_cache=False)
+    n_classes = len(dm.expression_labels)
+    dims = dm.dims
+
+    ## Setup Model
+    # load alexnet and modify output layer for new number of classes
+    model = models.alexnet(weights=models.AlexNet_Weights.DEFAULT)
+    model.classifier[6] = torch.nn.Linear(4096, n_classes)
+
+    summary(model, torch.zeros((1, 3, 224, 224)))
+
+    net = LightningClassification(model=model,
+                                  final_activation=final_activation,
+                                  optimizer=optim,
+                                  optimizer_params=optim_params,
+                                  loss_fn=loss)
+
+    callbacks = [
+        pl.callbacks.ModelCheckpoint(
+            save_weights_only=True, mode='min', monitor='val_loss'
+        ),
+    ]
+    trainer = pl.Trainer(default_root_dir=output / 'ckpts',
+                         callbacks=callbacks,
+                         max_epochs=50,
+                         gpus=1 if torch.cuda.is_available() else 0)
+    trainer.fit(net, dm)
+
+    net = LightningClassification.load_from_checkpoint(
+        trainer.checkpoint_callback.best_model_path,
+        model=model,
+        final_activation=final_activation,
+        optimizer=optim,
+        optimizer_params=optim_params,
+        loss_fn=loss
+    )
+
+    eval_results = trainer.test(net, dm)
+
+if __name__ == '__main__':
+    import argparse as ap
+
+    parser = ap.ArgumentParser()
+    parser.add_argument('-d', '--dataroot', required=True,
+                        help=f'Path to root of data directory')
+    parser.add_argument('-o', '--output', required=True,
+                        help=f'Path to store output of training, including checkpoints')
+
+    main(parser.parse_args())

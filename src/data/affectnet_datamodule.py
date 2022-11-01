@@ -140,15 +140,23 @@ class AffectNetImageDataModule(AbstractAffectNetDataModule):
         self._expression_labels = None
         self._feature_names = None
 
-        self._train_dataset: torch.utils.data.Dataset = None
-        self._val_dataset: torch.utils.data.Dataset = None
-        self._test_dataset: torch.utils.data.Dataset = None
+        self._train_dataset: AffectNetImageDataset = None
+        self._val_dataset: AffectNetImageDataset = None
+        self._test_dataset: AffectNetImageDataset = None
 
         self._train_transform = train_transform
         self._train_target_transform = train_target_transform
 
         self._test_transform = test_transform
         self._test_target_transform = test_targret_transform
+
+    @property
+    def dims(self):
+        return 3, 224, 224
+
+    @property
+    def num_classes(self):
+        return 8
 
     def prepare_data(self):
         '''
@@ -246,12 +254,16 @@ class AffectNetAUDataModule(AbstractAffectNetDataModule):
         self._val_dataset: torch.utils.data.Dataset = None
         self._test_dataset: torch.utils.data.Dataset = None
 
-        self.dims = (35, )
-        self.num_classes = 8
-
         self._feature_names: list = None
         self._expression_labels: list = None
 
+    @property
+    def dims(self):
+        return 35,
+
+    @property
+    def num_classes(self):
+        return 8
 
     def prepare_data(self):
         '''

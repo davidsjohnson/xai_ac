@@ -13,8 +13,6 @@ from src.data.affectnet_datamodule import AffectNetImageDataModule
 
 def main(args):
 
-    output = Path(args.output)
-
     ## Init params
     label = 'expression'
     batch_size = 128
@@ -38,14 +36,12 @@ def main(args):
                                   batch_size=batch_size,
                                   train_transform=transform,
                                   test_transform=transform,
-                                  refresh_cache=False)
-    n_classes = len(dm.expression_labels)
-    dims = dm.dims
+                                  refresh_cache=args.refresh_cache)
 
     ## Setup Model
     # load alexnet and modify output layer for new number of classes
     model = models.alexnet(weights=models.AlexNet_Weights.DEFAULT)
-    model.classifier[6] = torch.nn.Linear(4096, n_classes)
+    model.classifier[6] = torch.nn.Linear(4096, dm.num_classes)
 
     summary(model, torch.zeros((1, 3, 224, 224)))
 
@@ -60,9 +56,9 @@ def main(args):
             save_weights_only=True, mode='min', monitor='val_loss'
         ),
     ]
-    trainer = pl.Trainer(default_root_dir=output / 'ckpts',
+    trainer = pl.Trainer(default_root_dir=args.output / 'ckpts',
                          callbacks=callbacks,
-                         max_epochs=50,
+                         max_epochs=args.epochs,
                          gpus=1 if torch.cuda.is_available() else 0)
     trainer.fit(net, dm)
 
@@ -76,14 +72,19 @@ def main(args):
     )
 
     eval_results = trainer.test(net, dm)
+    print(eval_results)
 
 if __name__ == '__main__':
     import argparse as ap
 
     parser = ap.ArgumentParser()
-    parser.add_argument('-d', '--dataroot', required=True,
+    parser.add_argument('-d', '--dataroot', required=True, type=Path,
                         help=f'Path to root of data directory')
-    parser.add_argument('-o', '--output', required=True,
+    parser.add_argument('-o', '--output', required=True, type=Path,
                         help=f'Path to store output of training, including checkpoints')
+    parser.add_argument('-e', '--epochs', default=50, type=int,
+                        help=f'Number of epochs to train model.')
+    parser.add_argument('--refresh-cache', action='store_true',
+                        help=f'Refresh data module cache')
 
     main(parser.parse_args())

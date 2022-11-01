@@ -32,6 +32,8 @@ class LightningClassification(pl.LightningModule):
 
     def _process_batch(self, batch, batch_idx):
         x, y, s = batch
+        y = torch.squeeze(y, dim=-1)  # get rid of extra dimensions for loss
+
         logits = self.forward(x)
         if self._final_activiation == 'softmax':
             out = torch.softmax(logits, dim=1)
@@ -113,8 +115,9 @@ class LightningRegression(pl.LightningModule):
         return self._optim(self.parameters(), **self._optim_params)
 
     def _process_batch(self, batch, batch_idx):
-
         x, y, s = batch
+        y = torch.squeeze(y, dim=-1)  # get rid of extra dimensions for loss
+
         logits = self.forward(x)
         if self._final_activiation is None:
             out = logits

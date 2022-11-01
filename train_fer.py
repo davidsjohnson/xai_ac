@@ -44,11 +44,11 @@ def main(args):
                                   train_transform=transform,
                                   test_transform=transform,
                                   refresh_cache=args.refresh_cache,
-                                  num_workers=8)
+                                  num_workers=0)
 
     ## Setup Model
     # load alexnet and modify output layer for new number of classes
-    model = models.alexnet(weights=models.AlexNet_Weights.DEFAULT)
+    model = models.alexnet(weights=models.AlexNet_Weights.DEFAULT if args.pretrained else None)
     model.classifier[6] = torch.nn.Linear(4096, dm.num_classes)
 
     summary(model, torch.zeros((1, 3, 224, 224)))
@@ -91,6 +91,8 @@ if __name__ == '__main__':
                         help=f'Path to root of data directory')
     parser.add_argument('-o', '--output', required=True, type=Path,
                         help=f'Path to store output of training, including checkpoints')
+    parser.add_argument('--pretrained', action='store_true',
+                        help=f'Used Pretrained AlexNet Weights')
     parser.add_argument('-e', '--epochs', default=50, type=int,
                         help=f'Number of epochs to train model.')
     parser.add_argument('--refresh-cache', action='store_true',

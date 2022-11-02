@@ -54,9 +54,9 @@ def main(args):
 
     workers = 12
 
-    dl_train = torch.utils.data.DataLoader(ds_train, batch_size=32, shuffle=True, collate_fn=dummy_collate, num_workers=workers)
-    dl_val = torch.utils.data.DataLoader(ds_val, batch_size=32, shuffle=False, collate_fn=dummy_collate, num_workers=workers)
-    dl_test = torch.utils.data.DataLoader(ds_test, batch_size=32, shuffle=False, collate_fn=dummy_collate, num_workers=workers)
+    dl_train = torch.utils.data.DataLoader(ds_train, batch_size=256, shuffle=True, collate_fn=dummy_collate, num_workers=workers)
+    dl_val = torch.utils.data.DataLoader(ds_val, batch_size=256, shuffle=False, collate_fn=dummy_collate, num_workers=workers)
+    dl_test = torch.utils.data.DataLoader(ds_test, batch_size=256, shuffle=False, collate_fn=dummy_collate, num_workers=workers)
 
     num_classes = len(ds_test.classes)
 

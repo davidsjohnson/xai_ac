@@ -77,7 +77,7 @@ def main(args):
     #     loss_fn=loss
     # )
 
-    eval_results = trainer.test(net, dm)
+    eval_results = trainer.test(net, dm, ckpt_path='best')
     print(eval_results)
 
 if __name__ == '__main__':

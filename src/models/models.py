@@ -87,7 +87,8 @@ class AlexNet(nn.Module):
                  pretrained: bool = True):
         super(AlexNet, self).__init__()
 
-        model = models.alexnet(weights=models.AlexNet_Weights.DEFAULT if pretrained else None)\
+        self._pretrained = pretrained
+        model = models.alexnet(weights=models.AlexNet_Weights.DEFAULT if pretrained else None)
 
         layers = list(model.features.children())
         self._extractor = torch.nn.Sequential(*layers)
@@ -103,8 +104,13 @@ class AlexNet(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        self._extractor.eval()
-        with torch.no_grad():
+        if self._pretrained:
+            # don't finetune the core
+            self._extractor.eval()
+            with torch.no_grad():
+                feats = self._extractor(x).flatten(1)
+        else:
+            # finetune the core model too
             feats = self._extractor(x).flatten(1)
         return self._classifier(feats)
 

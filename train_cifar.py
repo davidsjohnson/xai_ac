@@ -26,9 +26,9 @@ def main(args):
     val_split = 0.1
 
     final_activation = 'softmax'
-    optim = torch.optim.Adam
+    optim = torch.optim.SGD
     optim_params = dict(
-        lr = 0.005
+        lr = 0.001, momentum=0.9
     )
     loss = torch.nn.CrossEntropyLoss()
 

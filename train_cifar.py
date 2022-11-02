@@ -52,7 +52,7 @@ def main(args):
         batch.append(subs)
         return batch
 
-    workers = 0
+    workers = 12
 
     dl_train = torch.utils.data.DataLoader(ds_train, batch_size=32, shuffle=True, collate_fn=dummy_collate, num_workers=workers)
     dl_val = torch.utils.data.DataLoader(ds_val, batch_size=32, shuffle=False, collate_fn=dummy_collate, num_workers=workers)

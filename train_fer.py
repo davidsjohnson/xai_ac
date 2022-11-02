@@ -68,14 +68,14 @@ def main(args):
                          gpus=1 if torch.cuda.is_available() else 0)
     trainer.fit(net, dm)
 
-    net = LightningClassification.load_from_checkpoint(
-        trainer.checkpoint_callback.best_model_path,
-        model=model,
-        final_activation=final_activation,
-        optimizer=optim,
-        optimizer_params=optim_params,
-        loss_fn=loss
-    )
+    # net = LightningClassification.load_from_checkpoint(
+    #     trainer.checkpoint_callback.best_model_path,
+    #     model=model,
+    #     final_activation=final_activation,
+    #     optimizer=optim,
+    #     optimizer_params=optim_params,
+    #     loss_fn=loss
+    # )
 
     eval_results = trainer.test(net, dm)
     print(eval_results)

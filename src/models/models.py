@@ -3,6 +3,7 @@ from functools import reduce
 
 import torch
 import torch.nn as nn
+from torchvision import models
 
 
 class SimpleFeedForward(nn.Module):
@@ -77,3 +78,38 @@ class SimpleCNN(nn.Module):
             x = fc(x)
 
         return self.out(x)
+
+
+class AlexNet(nn.Module):
+
+    def __init__(self,
+                 n_classes: int,
+                 pretrained: bool = True):
+        super(AlexNet, self).__init__()
+
+        model = models.alexnet(weights=models.AlexNet_Weights.DEFAULT if pretrained else None)\
+
+        layers = list(model.features.children())
+        self._extractor = torch.nn.Sequential(*layers)
+        
+        self._classifier = torch.nn.Sequential(
+            nn.Dropout(p=0.5),
+            nn.Linear(in_features=(256 * 6 * 6), out_features=1024),
+            nn.ReLU(),
+            nn.Dropout(p=0.5),
+            nn.Linear(in_features=1024, out_features=512),
+            nn.ReLU(),
+            nn.Linear(in_features=512, out_features=n_classes),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        self._extractor.eval()
+        with torch.no_grad():
+            feats = self._extractor(x).flatten(1)
+        return self._classifier(feats)
+
+
+if __name__ == '__main__':
+    from torchsummaryX import summary
+    model = AlexNet(8, True)
+    summary(model, torch.zeros(1, 3, 224, 224))

@@ -1,7 +1,5 @@
 from pathlib import Path
 
-from tqdm import tqdm
-
 import torch
 import torch.utils.data
 import pytorch_lightning as pl
@@ -10,6 +8,7 @@ from torchvision import transforms
 
 from torchsummaryX import summary
 
+from src.models.models import AlexNet
 from src.models.lightning_models import LightningClassification
 from src.data.affectnet_datamodule import AffectNetImageDataModule
 
@@ -48,9 +47,7 @@ def main(args):
 
     ## Setup Model
     # load alexnet and modify output layer for new number of classes
-    model = models.alexnet(weights=models.AlexNet_Weights.DEFAULT if args.pretrained else None)
-    model.classifier[6] = torch.nn.Linear(4096, dm.num_classes)
-
+    model = AlexNet(n_classes=dm.num_classes, pretrained=args.pretrained)
     summary(model, torch.zeros((1, 3, 224, 224)))
 
     net = LightningClassification(model=model,

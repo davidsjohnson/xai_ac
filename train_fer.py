@@ -43,7 +43,7 @@ def main(args):
                                   train_transform=transform,
                                   test_transform=transform,
                                   refresh_cache=args.refresh_cache,
-                                  num_workers=8)
+                                  num_workers=12)
 
     ## Setup Model
     # load alexnet and modify output layer for new number of classes

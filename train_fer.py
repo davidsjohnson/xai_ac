@@ -34,6 +34,8 @@ def main(args):
     ## Setup Data
     transform = transforms.Compose([
         transforms.ToTensor(),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomErasing(),
         transforms.Normalize(mean=MEAN, std=STD),
     ])
     dm = AffectNetImageDataModule(label_type=label,
@@ -43,7 +45,7 @@ def main(args):
                                   train_transform=transform,
                                   test_transform=transform,
                                   refresh_cache=args.refresh_cache,
-                                  num_workers=12)
+                                  num_workers=0)
 
     ## Setup Model
     # load alexnet and modify output layer for new number of classes
@@ -65,19 +67,11 @@ def main(args):
     trainer = pl.Trainer(default_root_dir=args.output / 'ckpts',
                          callbacks=callbacks,
                          max_epochs=args.epochs,
-                         gpus=1 if torch.cuda.is_available() else 0)
+                         gpus=1 if torch.cuda.is_available() else 0,
+                         fast_dev_run=True)
     trainer.fit(net, dm)
 
-    # net = LightningClassification.load_from_checkpoint(
-    #     trainer.checkpoint_callback.best_model_path,
-    #     model=model,
-    #     final_activation=final_activation,
-    #     optimizer=optim,
-    #     optimizer_params=optim_params,
-    #     loss_fn=loss
-    # )
-
-    eval_results = trainer.test(net, dm, ckpt_path='best')
+    eval_results = trainer.test(net, dm, ckpt_path=None)
     print(eval_results)
 
 if __name__ == '__main__':

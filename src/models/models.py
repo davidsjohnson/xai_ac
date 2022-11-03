@@ -90,29 +90,36 @@ class AlexNet(nn.Module):
         self._pretrained = pretrained
         model = models.alexnet(weights=models.AlexNet_Weights.DEFAULT if pretrained else None)
 
-        layers = list(model.features.children())
-        self._extractor = torch.nn.Sequential(*layers)
+        # layers = list(model.children())
+        # self._extractor = torch.nn.Sequential(*layers[:-1])
+        #
+        # self._classifier = nn.Linear(in_features=4096, out_features=n_classes)
+        self.extractor = nn.Sequential(model.features, model.avgpool)
+        self.classifier = model.classifier
+        self.classifier[-1] = nn.Linear(in_features=4096, out_features=n_classes)
         
-        self._classifier = torch.nn.Sequential(
-            nn.Dropout(p=0.5),
-            nn.Linear(in_features=(256 * 6 * 6), out_features=1024),
-            nn.ReLU(),
-            nn.Dropout(p=0.5),
-            nn.Linear(in_features=1024, out_features=512),
-            nn.ReLU(),
-            nn.Linear(in_features=512, out_features=n_classes),
-        )
+        # self._classifier = torch.nn.Sequential(
+        #     nn.Dropout(p=0.5),
+        #     nn.Linear(in_features=(256 * 6 * 6), out_features=4096),
+        #     nn.ReLU(),
+        #     nn.Dropout(p=0.5),
+        #     nn.Linear(in_features=4096, out_features=4096),
+        #     nn.ReLU(),
+        #     nn.Linear(in_features=4096, out_features=n_classes),
+        # )
+
+    #     AdaptiveAvgPool2d(output_size=(6, 6))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self._pretrained:
             # don't finetune the core
-            self._extractor.eval()
+            self.extractor.eval()
             with torch.no_grad():
-                feats = self._extractor(x).flatten(1)
+                feats = self.extractor(x).flatten(1)
         else:
             # finetune the core model too
-            feats = self._extractor(x).flatten(1)
-        return self._classifier(feats)
+            feats = self.extractor(x).flatten(1)
+        return self.classifier(feats)
 
 
 if __name__ == '__main__':

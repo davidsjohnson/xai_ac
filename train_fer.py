@@ -67,8 +67,7 @@ def main(args):
     trainer = pl.Trainer(default_root_dir=args.output / 'ckpts',
                          callbacks=callbacks,
                          max_epochs=args.epochs,
-                         gpus=1 if torch.cuda.is_available() else 0,
-                         fast_dev_run=True)
+                         gpus=1 if torch.cuda.is_available() else 0)
     trainer.fit(net, dm)
 
     eval_results = trainer.test(net, dm, ckpt_path='best')

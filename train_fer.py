@@ -45,7 +45,7 @@ def main(args):
                                   train_transform=transform,
                                   test_transform=transform,
                                   refresh_cache=args.refresh_cache,
-                                  num_workers=0)
+                                  num_workers=18)
 
     ## Setup Model
     # load alexnet and modify output layer for new number of classes
@@ -71,7 +71,7 @@ def main(args):
                          fast_dev_run=True)
     trainer.fit(net, dm)
 
-    eval_results = trainer.test(net, dm, ckpt_path=None)
+    eval_results = trainer.test(net, dm, ckpt_path='best')
     print(eval_results)
 
 if __name__ == '__main__':

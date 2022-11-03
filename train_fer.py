@@ -67,11 +67,18 @@ def main(args):
     trainer = pl.Trainer(default_root_dir=args.output / 'ckpts',
                          callbacks=callbacks,
                          max_epochs=args.epochs,
-                         gpus=1 if torch.cuda.is_available() else 0)
+                         gpus=1 if torch.cuda.is_available() else 0,
+                         fast_dev_run=True)
     trainer.fit(net, dm)
 
-    eval_results = trainer.test(net, dm, ckpt_path='best')
-    print(eval_results)
+    ckpt_path = None
+    train_eval_results = trainer.test(net, dm.train_dataloader(), ckpt_path=ckpt_path)
+    val_eval_results = trainer.test(net, dm.val_dataloader(), ckpt_path=ckpt_path)
+    test_eval_results = trainer.test(net, dm, ckpt_path=ckpt_path)
+
+    print('Train Results:', train_eval_results)
+    print('Val Results:', val_eval_results)
+    print('Test Results:', test_eval_results)
 
 if __name__ == '__main__':
     import argparse as ap

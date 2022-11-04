@@ -32,18 +32,22 @@ def main(args):
     loss = torch.nn.CrossEntropyLoss()
 
     ## Setup Data
-    transform = transforms.Compose([
+    train_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.RandomHorizontalFlip(),
         transforms.RandomErasing(),
+        transforms.Normalize(mean=MEAN, std=STD),
+    ])
+    test_transform = transforms.Compose([
+        transforms.ToTensor(),
         transforms.Normalize(mean=MEAN, std=STD),
     ])
     dm = AffectNetImageDataModule(label_type=label,
                                   data_root=args.dataroot,
                                   val_split=val_split,
                                   batch_size=batch_size,
-                                  train_transform=transform,
-                                  test_transform=transform,
+                                  train_transform=train_transform,
+                                  test_transform=test_transform,
                                   refresh_cache=args.refresh_cache,
                                   num_workers=18)
 

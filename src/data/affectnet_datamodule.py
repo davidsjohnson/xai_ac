@@ -198,7 +198,7 @@ class AffectNetImageDataModule(AbstractAffectNetDataModule):
                                                         load_cache=True, save=False,
                                                         keep_as_pandas=self._keep_as_pandas)
 
-            # and split validation from train data
+            # and split validation from train data # TODO Think about stratification
             val_split_size = int(len(self._train_dataset) * self._val_split)
             train_split_size = len(self._train_dataset) - val_split_size
             self._train_dataset, self._val_dataset = torch.utils.data.random_split(self._train_dataset, (train_split_size, val_split_size))

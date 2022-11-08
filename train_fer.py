@@ -35,7 +35,7 @@ def main(args):
     train_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.RandomHorizontalFlip(),
-        transforms.RandomErasing(),
+        transforms.RandomErasing(scale=(0.02, 0.25)),
         transforms.Normalize(mean=MEAN, std=STD),
     ])
     test_transform = transforms.Compose([

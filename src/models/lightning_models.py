@@ -45,13 +45,13 @@ class LightningClassification(pl.LightningModule):
 
         logits = self.forward(x)
         if self._final_activiation == 'softmax':
-            out = torch.softmax(logits, dim=1)
+            pred = torch.softmax(logits, dim=1)
         elif self._final_activiation is None:
-             out = logits
+             pred = logits
         else:
             raise ValueError(f'Activation {self._final_activiation} not yet implemented')
-        loss =  self._loss_fn(out, y)
-        acc = (out.argmax(dim=-1) == y).float().mean()
+        loss =  self._loss_fn(logits, y)    # cross entropy loss expects logits
+        acc = (pred.argmax(dim=-1) == y).float().mean()
 
         return loss, acc
 

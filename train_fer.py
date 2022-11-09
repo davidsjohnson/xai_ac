@@ -14,6 +14,9 @@ from src.data.affectnet_datamodule import AffectNetImageDataModule
 
 pl.seed_everything(42)
 
+IMGNET_MEAN = [0.485, 0.456, 0.406]
+IMGNET_STD = [0.229, 0.224, 0.225]
+
 MEAN = [0.5697, 0.4462, 0.3913]
 STD = [0.2323, 0.2060, 0.1947]
 
@@ -32,15 +35,19 @@ def main(args):
     loss = torch.nn.CrossEntropyLoss()
 
     ## Setup Data
+
+    mean = MEAN if not args.pretrained else IMGNET_MEAN
+    std = STD if not args.pretrained else IMGNET_STD
+
     train_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.RandomHorizontalFlip(),
-        transforms.RandomErasing(scale=(0.02, 0.25)),
-        transforms.Normalize(mean=MEAN, std=STD),
+        #transforms.RandomErasing(scale=(0.02, 0.25)),
+        transforms.Normalize(mean=mean, std=std),
     ])
     test_transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=MEAN, std=STD),
+        transforms.Normalize(mean=mean, std=std),
     ])
     dm = AffectNetImageDataModule(label_type=label,
                                   data_root=args.dataroot,

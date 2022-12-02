@@ -15,13 +15,11 @@ from src.models.lightning_models import LightningClassification
 
 pl.seed_everything(42)
 
-MEAN = [0.5697, 0.4462, 0.3913]
-STD = [0.2323, 0.2060, 0.1947]
+MEAN = [0.485, 0.456, 0.406]
+STD = [0.229, 0.224, 0.225]
 
 def main(args):
 
-    ## Init params
-    label = 'expression'
     batch_size = 256
     val_split = 0.1
 
@@ -37,13 +35,15 @@ def main(args):
         transforms.Resize(256),
         transforms.CenterCrop(224),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        transforms.Normalize(mean=MEAN, std=STD),
     ])
     ds_train = CIFAR10('unittests/testdata', train=True, download=True, transform=transform)
     ds_test = CIFAR10('unittests/testdata', train=False, download=True, transform=transform)
 
     # make dataloader here
-    ds_train, ds_val = torch.utils.data.random_split(ds_train, [int(len(ds_train) * 0.9), int(len(ds_train) * 0.1)])
+    val_split_size = int(len(ds_train) * val_split)
+    train_split_size = len(ds_train) - val_split_size
+    ds_train, ds_val = torch.utils.data.random_split(ds_train, [train_split_size, val_split_size])
 
     # collate function to add third element to batch
     def dummy_collate(data):
@@ -54,9 +54,9 @@ def main(args):
 
     workers = 12
 
-    dl_train = torch.utils.data.DataLoader(ds_train, batch_size=256, shuffle=True, collate_fn=dummy_collate, num_workers=workers)
-    dl_val = torch.utils.data.DataLoader(ds_val, batch_size=256, shuffle=False, collate_fn=dummy_collate, num_workers=workers)
-    dl_test = torch.utils.data.DataLoader(ds_test, batch_size=256, shuffle=False, collate_fn=dummy_collate, num_workers=workers)
+    dl_train = torch.utils.data.DataLoader(ds_train, batch_size=batch_size, shuffle=True, collate_fn=dummy_collate, num_workers=workers)
+    dl_val = torch.utils.data.DataLoader(ds_val, batch_size=batch_size, shuffle=False, collate_fn=dummy_collate, num_workers=workers)
+    dl_test = torch.utils.data.DataLoader(ds_test, batch_size=batch_size, shuffle=False, collate_fn=dummy_collate, num_workers=workers)
 
     num_classes = len(ds_test.classes)
 

@@ -8,7 +8,7 @@ from torchvision import transforms
 
 from torchsummaryX import summary
 
-from src.models.models import AlexNet
+from src.models.models import AlexNet, DenseNet
 from src.models.lightning_models import LightningClassification
 from src.data.affectnet_datamodule import AffectNetImageDataModule
 
@@ -60,7 +60,12 @@ def main(args):
 
     ## Setup Model
     # load alexnet and modify output layer for new number of classes
-    model = AlexNet(n_classes=dm.num_classes, pretrained=args.pretrained)
+    if args.model.lower() == 'alexnet':
+        model = AlexNet(n_classes=dm.num_classes, pretrained=args.pretrained)
+    elif args.model.lower() == 'densenet':
+        model = DenseNet(n_classes=dm.num_classes, pretrained=args.pretrained)
+    else:
+        raise ValueError(f'Invalid model name, {args.model}.  Model name should be one of [densenet, alexnet]')
     summary(model, torch.zeros((1, 3, 224, 224)))
 
     net = LightningClassification(model=model,
@@ -98,11 +103,14 @@ if __name__ == '__main__':
                         help=f'Path to root of data directory')
     parser.add_argument('-o', '--output', required=True, type=Path,
                         help=f'Path to store output of training, including checkpoints')
+    parser.add_argument('-m', '--model', default='alexnet', type=str,
+                        help='Name of the model to use during training. Should be one of [densenet, alexnet]')
     parser.add_argument('--pretrained', action='store_true',
                         help=f'Used Pretrained AlexNet Weights')
     parser.add_argument('-e', '--epochs', default=50, type=int,
                         help=f'Number of epochs to train model.')
     parser.add_argument('--refresh-cache', action='store_true',
                         help=f'Refresh data module cache')
+
 
     main(parser.parse_args())

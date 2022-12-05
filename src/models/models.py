@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from functools import reduce
 
 import torch
+import torch.nn.functional as F
 import torch.nn as nn
 from torchvision import models
 
@@ -119,9 +120,38 @@ class AlexNet(nn.Module):
             # finetune the core model too
             feats = self.extractor(x).flatten(1)
         return self.classifier(feats)
+    
+    
+class DenseNet(nn.Module):
+
+    def __init__(self,
+                 n_classes: int,
+                 pretrained: bool = True):
+        super(DenseNet, self).__init__()
+
+        self._pretrained = pretrained
+        densenet_kwargs = {}
+        base_model = models.densenet169(weights=models.DenseNet169_Weights.DEFAULT if pretrained else None,
+                                        **densenet_kwargs)
+        self.extractor = base_model.features
+        self.classifier = nn.Linear(in_features=1664, out_features=n_classes)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if self._pretrained:
+            # don't finetune the core
+            self.extractor.eval()
+            with torch.no_grad():
+                feats = self.extractor(x)
+        else:
+            # finetune the core model too
+            feats = self.extractor(x)
+        out = F.relu(feats, inplace=True)
+        out = F.adaptive_avg_pool2d(out, (1, 1))
+        out = torch.flatten(out, 1)
+        return self.classifier(out)
 
 
 if __name__ == '__main__':
     from torchsummaryX import summary
-    model = AlexNet(8, True)
+    model = DenseNet(8, True)
     summary(model, torch.zeros(1, 3, 224, 224))

@@ -28,10 +28,6 @@ def main(args):
     val_split = 0.1
 
     final_activation = 'softmax'
-    optim = torch.optim.SGD
-    optim_params = dict(
-        lr = 0.001, momentum=0.9
-    )
     loss = torch.nn.CrossEntropyLoss()
 
     ## Setup Data
@@ -61,8 +57,16 @@ def main(args):
     ## Setup Model
     # load alexnet and modify output layer for new number of classes
     if args.model.lower() == 'alexnet':
+        optim = torch.optim.SGD
+        optim_params = dict(
+            lr=0.001, momentum=0.9
+        )
         model = AlexNet(n_classes=dm.num_classes, pretrained=args.pretrained)
     elif args.model.lower() == 'densenet':
+        optim = torch.optim.SGD
+        optim_params = dict(
+            lr=0.1,
+        )
         model = DenseNet(n_classes=dm.num_classes, pretrained=args.pretrained)
     else:
         raise ValueError(f'Invalid model name, {args.model}.  Model name should be one of [densenet, alexnet]')

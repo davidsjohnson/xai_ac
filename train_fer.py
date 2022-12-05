@@ -8,7 +8,7 @@ from torchvision import transforms
 
 from torchsummaryX import summary
 
-from src.models.models import AlexNet, DenseNet
+from src.models.models import AlexNet, DenseNet, VGGVariant
 from src.models.lightning_models import LightningClassification
 from src.data.affectnet_datamodule import AffectNetImageDataModule
 
@@ -24,7 +24,7 @@ def main(args):
 
     ## Init params
     label = 'expression'
-    batch_size = 256
+    batch_size = 400
     val_split = 0.1
 
     final_activation = 'softmax'
@@ -40,10 +40,12 @@ def main(args):
         transforms.RandomHorizontalFlip(),
         #transforms.RandomErasing(scale=(0.02, 0.25)),
         transforms.Normalize(mean=mean, std=std),
+        transforms.Resize((128, 128))
     ])
     test_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std),
+        transforms.Resize((128, 128))
     ])
     dm = AffectNetImageDataModule(label_type=label,
                                   data_root=args.dataroot,
@@ -68,9 +70,15 @@ def main(args):
             lr=0.1,
         )
         model = DenseNet(n_classes=dm.num_classes, pretrained=args.pretrained)
+    elif args.model.lower() == 'vgg':
+        optim = torch.optim.Adam
+        optim_params = dict(
+            lr=0.001,
+        )
+        model = VGGVariant(input_shape=(3, 128, 128), n_classes=dm.num_classes)
     else:
         raise ValueError(f'Invalid model name, {args.model}.  Model name should be one of [densenet, alexnet]')
-    summary(model, torch.zeros((1, 3, 224, 224)))
+    summary(model, torch.zeros((1, 3, 128, 128)))
 
     net = LightningClassification(model=model,
                                   final_activation=final_activation,
@@ -87,10 +95,11 @@ def main(args):
     trainer = pl.Trainer(default_root_dir=args.output / 'ckpts',
                          callbacks=callbacks,
                          max_epochs=args.epochs,
-                         gpus=1 if torch.cuda.is_available() else 0)
+                         gpus=1 if torch.cuda.is_available() else 0,
+                         fast_dev_run=args.debug)
     trainer.fit(net, dm)
 
-    ckpt_path = 'best'
+    ckpt_path = 'best' if not args.debug else None
     train_eval_results = trainer.test(net, dm.train_dataloader(), ckpt_path=ckpt_path)
     val_eval_results = trainer.test(net, dm.val_dataloader(), ckpt_path=ckpt_path)
     test_eval_results = trainer.test(net, dm, ckpt_path=ckpt_path)
@@ -115,6 +124,8 @@ if __name__ == '__main__':
                         help=f'Number of epochs to train model.')
     parser.add_argument('--refresh-cache', action='store_true',
                         help=f'Refresh data module cache')
+    parser.add_argument('--debug', action='store_true',
+                        help=f'Run in debug mode')
 
 
     main(parser.parse_args())

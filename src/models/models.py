@@ -151,7 +151,59 @@ class DenseNet(nn.Module):
         return self.classifier(out)
 
 
+class VGGBlock(nn.Module):
+    def __init__(self,
+                 in_channels: int,
+                 out_channels: int):
+        super(VGGBlock, self).__init__()
+        convblock = nn.Sequential(
+            nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=(3, 3), padding=(3//2, 3//2)),
+            nn.BatchNorm2d(num_features=out_channels),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=(3, 3), padding=(3 // 2, 3 // 2)),
+            nn.BatchNorm2d(num_features=out_channels),
+            nn.ReLU(),
+        )
+        self.net = nn.Sequential(
+            convblock,
+            nn.MaxPool2d((2, 2)),
+            nn.Dropout(0.2)
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.net(x)
+
+
+class VGGVariant(nn.Module):
+    """
+    Model from: https://arxiv.org/abs/1807.08775
+    """
+    def __init__(self,
+                 input_shape: tuple,
+                 n_classes: int):
+        super(VGGVariant, self).__init__()
+        channels = [16, 32, 64, 128, 128]
+        in_channels = [input_shape[0]] + list(channels[:-1])
+        out_channels = channels
+
+        self.features = nn.Sequential(*[VGGBlock(i, o) for i, o in zip(in_channels, out_channels)])
+        self.classifier = nn.Sequential(
+            nn.Linear(in_features=2048, out_features=1024),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(in_features=1024, out_features=1024),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(in_features=1024, out_features=n_classes)
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        out = self.features(x).flatten(1)
+        return self.classifier(out)
+
+
+
 if __name__ == '__main__':
     from torchsummaryX import summary
-    model = DenseNet(8, True)
-    summary(model, torch.zeros(1, 3, 224, 224))
+    model = VGGVariant((3, 128, 128), 8)
+    summary(model, torch.zeros(1, 3, 128, 128))

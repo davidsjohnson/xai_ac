@@ -174,6 +174,21 @@ class VGGBlock(nn.Module):
         return self.net(x)
 
 
+class ResNet18(nn.Module):
+
+    def __init__(self, n_classes, pretrained):
+        super(ResNet18, self).__init__()
+
+        self._pretrained = pretrained
+        resnet_kwargs = {}
+        self.model = models.resnet18(models.ResNet18_Weights.DEFAULT if pretrained else None, **resnet_kwargs)
+        n_feats = self.model.fc.in_features
+        self.model.fc = nn.Linear(in_features=n_feats, out_features=n_classes)
+
+    def forward(self, x):
+        return self.model(x)
+
+
 class VGGVariant(nn.Module):
     """
     Model from: https://arxiv.org/abs/1807.08775
@@ -188,7 +203,7 @@ class VGGVariant(nn.Module):
 
         self.features = nn.Sequential(*[VGGBlock(i, o) for i, o in zip(in_channels, out_channels)])
         self.classifier = nn.Sequential(
-            nn.Linear(in_features=2048, out_features=1024),
+            nn.Linear(in_features=6272, out_features=1024),
             nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(in_features=1024, out_features=1024),
@@ -202,8 +217,7 @@ class VGGVariant(nn.Module):
         return self.classifier(out)
 
 
-
 if __name__ == '__main__':
     from torchsummaryX import summary
-    model = VGGVariant((3, 128, 128), 8)
-    summary(model, torch.zeros(1, 3, 128, 128))
+    model = ResNet18(8, pretrained=True)
+    summary(model, torch.zeros(1, 3, 224, 224))

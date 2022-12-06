@@ -8,7 +8,7 @@ from torchvision import transforms
 
 from torchsummaryX import summary
 
-from src.models.models import AlexNet, DenseNet, VGGVariant
+from src.models.models import AlexNet, DenseNet, VGGVariant, ResNet18
 from src.models.lightning_models import LightningClassification
 from src.data.affectnet_datamodule import AffectNetImageDataModule
 
@@ -40,12 +40,12 @@ def main(args):
         transforms.RandomHorizontalFlip(),
         #transforms.RandomErasing(scale=(0.02, 0.25)),
         transforms.Normalize(mean=mean, std=std),
-        transforms.Resize((128, 128))
+        transforms.Resize((224, 224))
     ])
     test_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std),
-        transforms.Resize((128, 128))
+        transforms.Resize((224, 224))
     ])
     dm = AffectNetImageDataModule(label_type=label,
                                   data_root=args.dataroot,
@@ -70,15 +70,18 @@ def main(args):
             lr=0.1,
         )
         model = DenseNet(n_classes=dm.num_classes, pretrained=args.pretrained)
-    elif args.model.lower() == 'vgg':
+    elif args.model.lower() in ['vgg', 'resnet']:
         optim = torch.optim.Adam
         optim_params = dict(
             lr=0.001,
         )
-        model = VGGVariant(input_shape=(3, 128, 128), n_classes=dm.num_classes)
+        if args.model.lower() == 'vgg':
+            model = VGGVariant(input_shape=(3, 224, 224), n_classes=dm.num_classes)
+        else:
+            model = ResNet18(n_classes=dm.num_classes, pretrained=args.pretrained)
     else:
-        raise ValueError(f'Invalid model name, {args.model}.  Model name should be one of [densenet, alexnet]')
-    summary(model, torch.zeros((1, 3, 128, 128)))
+        raise ValueError(f'Invalid model name, {args.model}.  Model name should be one of [densenet, alexnet, vgg, resnet]')
+    summary(model, torch.zeros((1, 3, 224, 224)))
 
     net = LightningClassification(model=model,
                                   final_activation=final_activation,
@@ -117,7 +120,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', required=True, type=Path,
                         help=f'Path to store output of training, including checkpoints')
     parser.add_argument('-m', '--model', default='alexnet', type=str,
-                        help='Name of the model to use during training. Should be one of [densenet, alexnet]')
+                        help='Name of the model to use during training. Should be one of [densenet, alexnet, vgg, resnet]')
     parser.add_argument('--pretrained', action='store_true',
                         help=f'Used Pretrained AlexNet Weights')
     parser.add_argument('-e', '--epochs', default=50, type=int,

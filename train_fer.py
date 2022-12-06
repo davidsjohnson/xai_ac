@@ -37,8 +37,13 @@ def main(args):
 
     train_transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.RandomHorizontalFlip(),
-        #transforms.RandomErasing(scale=(0.02, 0.25)),
+        transforms.RandomOrder([
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomErasing(scale=(0.02, 0.25)),
+            transforms.RandomRotation(degrees=20),
+            transforms.RandomAdjustSharpness(sharpness_factor=0.5),
+            transforms.RandomAdjustSharpness(sharpness_factor=2),
+        ]),
         transforms.Normalize(mean=mean, std=std),
         transforms.Resize((224, 224))
     ])

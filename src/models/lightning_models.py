@@ -1,6 +1,6 @@
 import torch
 import pytorch_lightning as pl
-from torchmetrics import R2Score, SpearmanCorrCoef
+from torchmetrics import R2Score, SpearmanCorrCoef, AUROC
 
 
 class LightningClassification(pl.LightningModule):
@@ -19,10 +19,14 @@ class LightningClassification(pl.LightningModule):
         self._optim = optimizer
         self._optim_params = optimizer_params
         self._final_activiation = final_activation
+
+        self._auroc_test = AUROC(task='multiclass', num_classes=8, average='weighted')  #TODO: fix this
+        self._auroc_test_perlcass = AUROC(task='multiclass', num_classes=8, average=None)
+
         self.net =  model
 
     def available_metrics(self):
-        return ['loss', 'acc']
+        return ['loss', 'acc', 'auc']
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net.forward(x)
@@ -53,24 +57,29 @@ class LightningClassification(pl.LightningModule):
         loss =  self._loss_fn(logits, y)    # cross entropy loss expects logits
         acc = (pred.argmax(dim=-1) == y).float().mean()
 
-        return loss, acc
+        return loss, acc, pred
 
     def training_step(self, batch, batch_idx):
-        loss, acc = self._process_batch(batch, batch_idx)
+        loss, acc, _ = self._process_batch(batch, batch_idx)
         self.log("train_loss", loss, prog_bar=True)
         self.log("train_acc", acc, prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, acc = self._process_batch(batch, batch_idx)
+        loss, acc, _ = self._process_batch(batch, batch_idx)
         self.log("val_loss", loss, prog_bar=True)
         self.log("val_acc", acc, prog_bar=True)
         return loss
 
     def test_step(self, batch, batch_idx):
-        loss, acc = self._process_batch(batch, batch_idx)
+        loss, acc, preds = self._process_batch(batch, batch_idx)
         self.log("test_loss", loss, prog_bar=True)
         self.log("test_acc", acc, prog_bar=True)
+
+        self._auroc_test(preds, batch[1].squeeze(dim=-1))
+        self._auroc_test_perlcass(preds, batch[1].squeeze(dim=-1))
+        self.log("test_auc", self._auroc_test)
+
         return loss
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):

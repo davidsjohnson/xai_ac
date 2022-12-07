@@ -5,6 +5,7 @@ import torch.utils.data
 import pytorch_lightning as pl
 from torchvision import models
 from torchvision import transforms
+from torchmetrics import AUROC
 
 from torchsummaryX import summary
 
@@ -115,6 +116,19 @@ def main(args):
     print('Train Results:', train_eval_results)
     print('Val Results:', val_eval_results)
     print('Test Results:', test_eval_results)
+
+    # calc AUROC for test data
+    auroc_test = AUROC(task='multiclass', num_classes=8, average='weighted')  # TODO: fix this
+    auroc_test_perlcass = AUROC(task='multiclass', num_classes=8, average=None)
+    y_true = torch.from_numpy(dm.test_dataset.df[label].values)
+    y_pred = trainer.predict(net, dataloaders=dm.test_dataloader(), ckpt_path=ckpt_path)
+
+    roc_score = auroc_test(y_pred[0], y_true)
+    roc_scores = auroc_test_perlcass(y_pred[0], y_true)
+
+    print(f'AUC Score Weighted: {roc_score}')
+    print(f'AUC Scores Per Class: {roc_scores}')
+
 
 if __name__ == '__main__':
     import argparse as ap

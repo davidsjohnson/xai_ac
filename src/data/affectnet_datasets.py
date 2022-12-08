@@ -77,6 +77,14 @@ class AffectNetImageDataset(torchvision.datasets.VisionDataset):
     def num_classes(self):
         return 8
 
+    @property
+    def class_counts(self):
+        return np.array([74874, 134415, 25459, 14090, 6378, 3803, 24882, 3750])
+
+    @property
+    def class_weights(self):
+        return self.class_counts / self.class_counts.sum()
+
     def _make_dataset(self, savepath: Optional[Path]=None):
 
         img_files = self._imgs_root.rglob('*.jpg')

@@ -3,7 +3,6 @@ from pathlib import Path
 import torch
 import torch.utils.data
 import pytorch_lightning as pl
-from torchvision import models
 from torchvision import transforms
 from torchmetrics import AUROC
 
@@ -29,7 +28,7 @@ def main(args):
     val_split = 0.1
 
     final_activation = 'softmax'
-    loss = torch.nn.CrossEntropyLoss()
+    loss_cls = torch.nn.CrossEntropyLoss
 
     ## Setup Data
 
@@ -89,6 +88,10 @@ def main(args):
         raise ValueError(f'Invalid model name, {args.model}.  Model name should be one of [densenet, alexnet, vgg, resnet]')
     summary(model, torch.zeros((1, 3, 224, 224)))
 
+    # this needs to be adjusted based on training/val split
+    inverse_weights = torch.from_numpy(1.0/dm.class_counts).type(torch.float32)
+    inverse_weights = inverse_weights / dm.class_weights.sum() * dm.num_classes
+    loss = loss_cls(weight=inverse_weights)
     net = LightningClassification(model=model,
                                   final_activation=final_activation,
                                   optimizer=optim,

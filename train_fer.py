@@ -90,7 +90,7 @@ def main(args):
 
     # this needs to be adjusted based on training/val split
     inverse_weights = torch.from_numpy(1.0/dm.class_counts).type(torch.float32)
-    inverse_weights = inverse_weights / dm.class_weights.sum() * dm.num_classes
+    # inverse_weights = inverse_weights / dm.class_counts.sum() * dm.num_classes
     loss = loss_cls(weight=inverse_weights)
     net = LightningClassification(model=model,
                                   final_activation=final_activation,
@@ -108,7 +108,7 @@ def main(args):
                          callbacks=callbacks,
                          max_epochs=args.epochs,
                          gpus=1 if torch.cuda.is_available() else 0,
-                         fast_dev_run=args.debug)
+                         fast_dev_run=3 if args.debug else False)
     trainer.fit(net, dm)
 
     ckpt_path = 'best' if not args.debug else None
@@ -125,9 +125,10 @@ def main(args):
     auroc_test_perlcass = AUROC(task='multiclass', num_classes=8, average=None)
     y_true = torch.from_numpy(dm.test_dataset.df[label].values)
     y_pred = trainer.predict(net, dataloaders=dm.test_dataloader(), ckpt_path=ckpt_path)
+    y_pred = torch.cat(y_pred) # concate all batches into one tensor for scoring
 
-    roc_score = auroc_test(y_pred[0], y_true)
-    roc_scores = auroc_test_perlcass(y_pred[0], y_true)
+    roc_score = auroc_test(y_pred, y_true)
+    roc_scores = auroc_test_perlcass(y_pred, y_true)
 
     print(f'AUC Score Weighted: {roc_score}')
     print(f'AUC Scores Per Class: {roc_scores}')

@@ -31,7 +31,6 @@ def main(args):
     loss_cls = torch.nn.CrossEntropyLoss
 
     ## Setup Data
-
     mean = MEAN if not args.pretrained else IMGNET_MEAN
     std = STD if not args.pretrained else IMGNET_STD
 
@@ -61,7 +60,7 @@ def main(args):
                                   refresh_cache=args.refresh_cache,
                                   num_workers=18)
 
-    ## Setup Model
+    ## Model Training
     # load alexnet and modify output layer for new number of classes
     if args.model.lower() == 'alexnet':
         optim = torch.optim.SGD
@@ -111,6 +110,7 @@ def main(args):
                          fast_dev_run=3 if args.debug else False)
     trainer.fit(net, dm)
 
+    ### Evaluation of model
     ckpt_path = 'best' if not args.debug else None
     train_eval_results = trainer.test(net, dm.train_dataloader(), ckpt_path=ckpt_path)
     val_eval_results = trainer.test(net, dm.val_dataloader(), ckpt_path=ckpt_path)
@@ -121,8 +121,8 @@ def main(args):
     print('Test Results:', test_eval_results)
 
     # calc AUROC for test data
-    auroc_test = AUROC(task='multiclass', num_classes=8, average='weighted')  # TODO: fix this
-    auroc_test_perlcass = AUROC(task='multiclass', num_classes=8, average=None)
+    auroc_test = AUROC(task='multiclass', num_classes=dm.num_classes, average='weighted')
+    auroc_test_perlcass = AUROC(task='multiclass', num_classes=dm.num_classes, average=None)
     y_true = torch.from_numpy(dm.test_dataset.df[label].values)
     y_pred = trainer.predict(net, dataloaders=dm.test_dataloader(), ckpt_path=ckpt_path)
     y_pred = torch.cat(y_pred) # concate all batches into one tensor for scoring

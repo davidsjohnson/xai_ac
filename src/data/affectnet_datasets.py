@@ -69,6 +69,22 @@ class AffectNetImageDataset(torchvision.datasets.VisionDataset):
     def df(self):
         return self._df
 
+    @property
+    def dims(self):
+        return 3, 224, 224
+
+    @property
+    def num_classes(self):
+        return 8
+
+    @property
+    def class_counts(self):
+        return np.array([74874, 134415, 25459, 14090, 6378, 3803, 24882, 3750])
+
+    @property
+    def class_weights(self):
+        return self.class_counts / self.class_counts.sum()
+
     def _make_dataset(self, savepath: Optional[Path]=None):
 
         img_files = self._imgs_root.rglob('*.jpg')
@@ -90,7 +106,7 @@ class AffectNetImageDataset(torchvision.datasets.VisionDataset):
 
                 df['arousal'] = float(np.load(f_aro).item())
                 df['valence'] = float(np.load(f_val).item())
-                df['expression'] = float(np.load(f_exp).item())
+                df['expression'] = int(np.load(f_exp).item())
 
                 # load landmarks
                 lnds = np.load(f_lnd)
@@ -102,6 +118,8 @@ class AffectNetImageDataset(torchvision.datasets.VisionDataset):
         if len(dfs) == 0:
             raise ValueError(f'No JPG files found in folder: {self._imgs_root.resolve()}')
         df_imgs = pd.concat(dfs)
+        df_imgs.astype({'expression': int})
+
         if savepath is not None:
             df_imgs.to_csv(savepath)
 
@@ -128,9 +146,6 @@ class AffectNetImageDataset(torchvision.datasets.VisionDataset):
 
         return sample, target, img_id
 
-
-
-        
 
 class AffectNetAUDataset(torch.utils.data.Dataset):
 
@@ -188,6 +203,14 @@ class AffectNetAUDataset(torch.utils.data.Dataset):
         return self.EXPRESSION_LABELS
 
     @property
+    def dims(self):
+        return 35,
+
+    @property
+    def num_classes(self):
+        return 8
+
+    @property
     def df(self):
         return self._df
 
@@ -219,6 +242,7 @@ class AffectNetAUDataset(torch.utils.data.Dataset):
                 df = self._load_single_item(f)
                 dfs.append(df)
         df_aus = pd.concat(dfs)     # TODO Fix error.  Add check for files
+        df_aus.astype({'expression': int})
         if savepath is not None:
             df_aus.to_csv(savepath)
 
@@ -247,7 +271,7 @@ class AffectNetAUDataset(torch.utils.data.Dataset):
 
         df['arousal'] = float(np.load(f_aro).item())
         df['valence'] = float(np.load(f_val).item())
-        df['expression'] = float(np.load(f_exp).item())
+        df['expression'] = int(np.load(f_exp).item())
 
         # load landmarks
         lnds = np.load(f_lnd)

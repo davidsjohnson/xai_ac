@@ -1,6 +1,6 @@
 import torch
 import pytorch_lightning as pl
-from torchmetrics import R2Score, SpearmanCorrCoef
+from torchmetrics import R2Score, SpearmanCorrCoef, AUROC
 
 
 class LightningClassification(pl.LightningModule):
@@ -19,47 +19,67 @@ class LightningClassification(pl.LightningModule):
         self._optim = optimizer
         self._optim_params = optimizer_params
         self._final_activiation = final_activation
+
+        self._auroc_test = AUROC(task='multiclass', num_classes=8, average='weighted')  #TODO: fix this
+        self._auroc_test_perlcass = AUROC(task='multiclass', num_classes=8, average=None)
+
         self.net =  model
 
     def available_metrics(self):
-        return ['loss', 'acc']
+        return ['loss', 'acc', 'auc']
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net.forward(x)
 
     def configure_optimizers(self):
-        return self._optim(self.parameters(), **self._optim_params)
+        opt =  self._optim(self.parameters(), **self._optim_params)
+        lr_scheduler = dict(
+            scheduler = torch.optim.lr_scheduler.StepLR(opt, gamma=0.1, step_size=5000),
+            interval = 'step',
+
+        )
+        return {
+            "optimizer": opt,
+            "lr_scheduler": lr_scheduler
+        }
 
     def _process_batch(self, batch, batch_idx):
         x, y, s = batch
+        y = torch.squeeze(y, dim=-1)  # get rid of extra dimensions for loss
+
         logits = self.forward(x)
         if self._final_activiation == 'softmax':
-            out = torch.softmax(logits, dim=1)
+            pred = torch.softmax(logits, dim=1)
         elif self._final_activiation is None:
-             out = logits
+             pred = logits
         else:
             raise ValueError(f'Activation {self._final_activiation} not yet implemented')
-        loss =  self._loss_fn(out, y)
-        acc = (out.argmax(dim=-1) == y).float().mean()
+        loss =  self._loss_fn(logits, y)    # cross entropy loss expects logits
+        acc = (pred.argmax(dim=-1) == y).float().mean()
 
-        return loss, acc
+        return loss, acc, pred
 
     def training_step(self, batch, batch_idx):
-        loss, acc = self._process_batch(batch, batch_idx)
-        self.log("train_loss", loss)
+        loss, acc, _ = self._process_batch(batch, batch_idx)
+        self.log("train_loss", loss, prog_bar=True)
         self.log("train_acc", acc, prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, acc = self._process_batch(batch, batch_idx)
-        self.log("val_loss", loss)
+        loss, acc, _ = self._process_batch(batch, batch_idx)
+        self.log("val_loss", loss, prog_bar=True)
         self.log("val_acc", acc, prog_bar=True)
         return loss
 
     def test_step(self, batch, batch_idx):
-        loss, acc = self._process_batch(batch, batch_idx)
-        self.log("test_loss", loss)
+        loss, acc, preds = self._process_batch(batch, batch_idx)
+        self.log("test_loss", loss, prog_bar=True)
         self.log("test_acc", acc, prog_bar=True)
+
+        self._auroc_test(preds, batch[1].squeeze(dim=-1))
+        self._auroc_test_perlcass(preds, batch[1].squeeze(dim=-1))
+        self.log("test_auc", self._auroc_test)
+
         return loss
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
@@ -113,8 +133,9 @@ class LightningRegression(pl.LightningModule):
         return self._optim(self.parameters(), **self._optim_params)
 
     def _process_batch(self, batch, batch_idx):
-
         x, y, s = batch
+        y = torch.squeeze(y, dim=-1)  # get rid of extra dimensions for loss
+
         logits = self.forward(x)
         if self._final_activiation is None:
             out = logits

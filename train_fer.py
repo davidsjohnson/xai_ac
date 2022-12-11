@@ -30,6 +30,9 @@ def main(args):
     final_activation = 'softmax'
     loss_cls = torch.nn.CrossEntropyLoss
 
+    mixup = True
+    alpha = 0.2
+
     ## Setup Data
     mean = MEAN if not args.pretrained else IMGNET_MEAN
     std = STD if not args.pretrained else IMGNET_STD
@@ -92,10 +95,13 @@ def main(args):
     # inverse_weights = inverse_weights / dm.class_counts.sum() * dm.num_classes
     loss = loss_cls(weight=inverse_weights)
     net = LightningClassification(model=model,
+                                  num_classes=dm.num_classes,
                                   final_activation=final_activation,
                                   optimizer=optim,
                                   optimizer_params=optim_params,
-                                  loss_fn=loss)
+                                  loss_fn=loss,
+                                  mixup=mixup,
+                                  alpha=alpha)
 
     callbacks = [
         pl.callbacks.ModelCheckpoint(

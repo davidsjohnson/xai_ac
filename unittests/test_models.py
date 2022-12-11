@@ -1,11 +1,12 @@
 import pytest
+from pathlib import Path
 
 import numpy as np
-
-from src.models.models import SimpleCNN, SimpleFeedForward
-from src.models.lightning_models import LightningRegression, LightningClassification
+import numpy.testing
+import matplotlib.pyplot as plt
 
 import torch
+import torch.nn.functional as F
 import torch.utils.data
 import pytorch_lightning as pl
 from torchvision import transforms
@@ -13,6 +14,10 @@ from torchvision import transforms
 from sklearn.datasets import make_classification
 from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
+
+from src.data.affectnet_datamodule import AffectNetImageDataModule
+from src.models.models import SimpleCNN, SimpleFeedForward
+from src.models.lightning_models import LightningRegression, LightningClassification, _apply_mixup
 
 pl.seed_everything(42)
 
@@ -56,6 +61,7 @@ class TestLightningClassification:
                                 dropout=[0.1, 0.1, 0.1])
 
         net = LightningClassification(model=model,
+                                      num_classes=n_classes,
                                       final_activation=final_activation,
                                       optimizer=opt,
                                       optimizer_params=opt_params,
@@ -76,6 +82,7 @@ class TestLightningClassification:
         net = LightningClassification.load_from_checkpoint(
             trainer.checkpoint_callback.best_model_path,
             model=model,
+            num_classes=n_classes,
             final_activation=final_activation,
             optimizer=opt,
             optimizer_params=opt_params,
@@ -135,6 +142,7 @@ class TestLightningClassification:
                           fc_dropout=[0.3])
 
         net = LightningClassification(model=model,
+                                      num_classes=n_classes,
                                       final_activation=final_activation,
                                       optimizer=opt,
                                       optimizer_params=opt_params,
@@ -154,6 +162,7 @@ class TestLightningClassification:
         net = LightningClassification.load_from_checkpoint(
             trainer.checkpoint_callback.best_model_path,
             model=model,
+            num_classes=n_classes,
             final_activation=final_activation,
             optimizer=opt,
             optimizer_params=opt_params,
@@ -167,3 +176,44 @@ class TestLightningClassification:
         assert train_result[0]['test_acc'] == pytest.approx(.70, abs=0.03)
         assert val_result[0]['test_acc'] == pytest.approx(.65, abs=0.03)
         assert test_result[0]['test_acc'] == pytest.approx(.65, abs=0.03)
+
+class TestMixup:
+
+    def test_apply_mixup(self):
+        data_root = Path('unittests/testdata/affectnet/raw/')
+        self.label_type = 'expression'
+        self.val_split = 0.2
+        self.batch_size = 10 # small batch size for small test dataset
+
+        alpha = 1
+
+        dm = AffectNetImageDataModule(self.label_type, data_root=data_root, name='affectnet_img_debug',
+                                      val_split=self.val_split, batch_size=self.batch_size,
+                                      refresh_cache=True, num_workers=0)
+        dm.prepare_data()
+        dm.setup()
+
+        batch = next(iter(dm.train_dataloader()))
+        batch[1] = F.one_hot(batch[1].squeeze(), dm.num_classes).type(torch.float32)
+
+        batch_mu = _apply_mixup(batch, alpha)
+
+        ## uncomment to view results
+        # trans = transforms.ToPILImage()
+        # img = trans(batch[0][9])
+        # img_mu = trans(batch_mu[0][9])
+
+        # img.show()
+        # plt.figure()
+        # plt.subplot(121)
+        # plt.imshow(np.asarray(img))
+        # plt.subplot(122)
+        # plt.imshow(np.asarray(img_mu))
+        # plt.show()
+
+        # using assert_raised to negate array_equal
+        with np.testing.assert_raises(AssertionError):
+            np.testing.assert_array_equal(batch[0], batch_mu[0])
+
+        with np.testing.assert_raises(AssertionError):
+            np.testing.assert_array_equal(batch[1], batch_mu[1])

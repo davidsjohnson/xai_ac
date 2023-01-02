@@ -66,6 +66,7 @@ def main(args):
     summary(model, torch.zeros((1, 3, 224, 224)))
 
     net = LightningClassification(model=model,
+                                  num_classes=num_classes,
                                   final_activation=final_activation,
                                   optimizer=optim,
                                   optimizer_params=optim_params,
@@ -86,6 +87,7 @@ def main(args):
     net = LightningClassification.load_from_checkpoint(
         trainer.checkpoint_callback.best_model_path,
         model=model,
+        num_classes=num_classes,
         final_activation=final_activation,
         optimizer=optim,
         optimizer_params=optim_params,
